@@ -149,6 +149,38 @@ pytest -q
 - CORS 报错：启用 Flask-Cors，并在创建 app 时允许前端来源。
 
 ## 路线图（短期）
+## 测试 & 环境自检
+
+### 1. 运行单元测试（当前仅健康检查示例，会逐步扩充）
+```bash
+pytest -q
+```
+预期输出：所有测试通过（当前 1 个通过）。
+
+### 2. 运行环境验证脚本
+```bash
+python scripts/verify_env.py
+```
+该脚本会：
+- 打印核心依赖版本（Flask / Pillow / SQLAlchemy / Werkzeug）
+- 尝试创建上传与日志目录
+- 测试数据库连接（SQLite）
+- 请求根路由并输出 JSON 响应
+显示 `=== Verification PASSED ===` 表示环境就绪。
+
+### 3. 典型失败场景
+| 场景 | 可能提示 | 解决方式 |
+|------|----------|----------|
+| ModuleNotFoundError: app | 路径未加入 | 使用 `python scripts/verify_env.py` 而不是从其他目录执行，或手动 `cd` 至根目录 |
+| AttributeError: werkzeug.__version__ | Werkzeug 3.x 与 Flask 2.2.x 不兼容 | 已在 requirements 固定 Werkzeug==2.3.7，重新安装依赖 |
+| Pillow 编译失败 | 无法编译源包 | 使用 conda Python 3.11, 或 `pip install --upgrade pip` 后重试 |
+| database is locked | SQLite 写锁争用 | 降低并发/切换 PostgreSQL |
+
+### 4. 持续扩展计划（测试）
+- 增加：上传 → 列表 → 详情 流程集成测试
+- 增加：JWT 认证流程测试（登录/刷新/访问保护资源）
+- 增加：搜索接口在索引不可用时的降级行为测试
+
 
 1) 实装 JWT 与受保护路由；完善错误码
 2) 上传链路：checksum/缩略图/入库/下载权限
