@@ -11,9 +11,12 @@ from app import create_app  # noqa: E402
 
 @pytest.fixture()
 def client():
-    app = create_app()
+    app = create_app({"SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
     app.config.update(TESTING=True)
     with app.test_client() as client:
+        with app.app_context():
+            from app import db
+            db.create_all()
         yield client
 
 

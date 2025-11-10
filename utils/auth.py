@@ -11,7 +11,7 @@ from app import db
 from models import User
 from utils.response import error
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 _refresh_token_store: Dict[str, Dict[str, Any]] = {}
 
@@ -34,6 +34,7 @@ def create_access_token(user_id: int, role: str) -> str:
         "sub": str(user_id),
         "role": role,
         "type": "access",
+        "nonce": os.urandom(4).hex(),
         "exp": _now() + timedelta(minutes=exp_minutes),
         "iat": _now(),
     }
@@ -48,6 +49,7 @@ def create_refresh_token(user_id: int, role: str) -> str:
         "role": role,
         "type": "refresh",
         "jti": jti,
+        "nonce": os.urandom(4).hex(),
         "exp": _now() + timedelta(days=exp_days),
         "iat": _now(),
     }
