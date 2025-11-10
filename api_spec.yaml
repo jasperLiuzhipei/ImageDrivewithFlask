@@ -1,0 +1,412 @@
+openapi: 3.0.3
+info:
+  title: WebImageDrive API
+  version: 0.2.0
+  description: |
+    Intelligent Web Image Drive with Flask. This OpenAPI defines REST endpoints for
+    auth, file/image management, search (semantic/OCR/similar), processing (embedding/OCR),
+    and analytics. All responses follow the standard envelope documented in api_conventions.md.
+servers:
+  - url: /api
+tags:
+  - name: auth
+    description: Authentication & token endpoints
+  - name: users
+    description: User profile
+  - name: files
+    description: Upload/download & raw file handling
+  - name: images
+    description: Image metadata and listing
+  - name: search
+    description: Text and image similarity search
+  - name: processing
+    description: Trigger and check embedding/OCR jobs
+  - name: analytics
+    description: Stats, export
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 1-based page index
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      description: Page size (max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: Sort string, e.g. "-created_at" or "size"
+      schema:
+        type: string
+    Category:
+      name: category
+      in: query
+      schema:
+        type: string
+    Tags:
+      name: tags
+      in: query
+      description: Comma separated tags to filter
+      schema:
+        type: string
+    Q:
+      name: q
+      in: query
+      description: Text query (for OCR or semantic text)
+      schema:
+        type: string
+    TopK:
+      name: k
+      in: query
+      description: Top-k results to return
+      schema:
+        type: integer
+        minimum: 1
+        default: 10
+  schemas:
+    StandardError:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 2001
+        message:
+          type: string
+        details:
+          nullable: true
+    StandardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          nullable: true
+        error:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/StandardError'
+    PageMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        created_at: { type: string, format: date-time }
+    Image:
+      type: object
+      properties:
+        id: { type: integer }
+        filename: { type: string }
+        url: { type: string }
+        checksum: { type: string }
+        size: { type: integer }
+        mime: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items:
+            type: string
+        created_at: { type: string, format: date-time }
+        ocr_text: { type: string, nullable: true }
+        embedding_ref: { type: string, nullable: true }
+    ImageList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '400':
+          description: Username taken or invalid
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login and receive tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          access_token: { type: string }
+                          refresh_token: { type: string }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token with refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: New access token
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout and blacklist refresh token
+      responses:
+        '204': { description: Logged out }
+
+  /users/me:
+    get:
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /files/upload:
+    post:
+      tags: [files]
+      summary: Upload image file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                category: { type: string }
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        '201':
+          description: Uploaded
+  /files/{image_id}/download:
+    get:
+      tags: [files]
+      summary: Download image by id
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Image stream }
+
+  /images:
+    get:
+      tags: [images]
+      summary: List images with pagination and filters
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Category'
+        - $ref: '#/components/parameters/Tags'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ImageList'
+  /images/{image_id}:
+    get:
+      tags: [images]
+      summary: Get single image metadata
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StandardResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Image'
+
+  /search/text:
+    get:
+      tags: [search]
+      summary: Text semantic search (via embeddings)
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/TopK'
+      responses:
+        '200': { description: OK }
+  /search/similar:
+    get:
+      tags: [search]
+      summary: Image-to-image similarity
+      parameters:
+        - name: image_id
+          in: query
+          schema: { type: integer }
+        - name: embedding_ref
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/TopK'
+      responses:
+        '200': { description: OK }
+  /search/ocr:
+    get:
+      tags: [search]
+      summary: OCR text search (substring/FTS)
+      parameters:
+        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { description: OK }
+
+  /process/trigger:
+    post:
+      tags: [processing]
+      summary: Trigger embedding and/or OCR jobs for an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [image_id]
+              properties:
+                image_id: { type: integer }
+                tasks:
+                  type: array
+                  items:
+                    type: string
+                    enum: [embedding, ocr]
+      responses:
+        '202': { description: Accepted }
+  /process/status:
+    get:
+      tags: [processing]
+      summary: Query processing status by image_id
+      parameters:
+        - name: image_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+
+  /analytics/summary:
+    get:
+      tags: [analytics]
+      summary: Basic statistics across the dataset
+      parameters:
+        - name: window
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: week
+      responses:
+        '200': { description: OK }
+  /analytics/export:
+    get:
+      tags: [analytics]
+      summary: Export analytics as CSV or JSON
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
+      responses:
+        '200': { description: File or JSON stream }

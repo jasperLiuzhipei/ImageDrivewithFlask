@@ -1,0 +1,39 @@
+############################
+# Runtime dependencies
+############################
+Flask==2.2.5
+Flask-SQLAlchemy==3.0.3
+python-dotenv==1.0.0
+passlib[bcrypt]==1.7.4
+PyJWT==2.8.0
+Pillow==10.0.1
+
+# CORS for frontend local dev
+Flask-Cors==4.0.0
+
+# Spec & config helpers
+PyYAML==6.0.1
+
+# DB migrations (optional but recommended)
+Flask-Migrate==4.0.5
+Alembic==1.13.1
+
+# File type detection (pure-python; avoids libmagic requirement)
+filetype==1.2.0
+
+# Optional: Postgres driver (enable if DATABASE_URL uses postgres)
+psycopg2-binary==2.9.9
+
+# Common HTTP client for integrations (OCR/Embedding, webhooks, etc.)
+requests==2.31.0
+
+# Structured logging helper
+python-json-logger==2.0.7
+
+############################
+# Dev / QA tools
+############################
+pytest==7.4.2
+pytest-cov==4.1.0
+flake8==6.1.0
+black==24.8.0

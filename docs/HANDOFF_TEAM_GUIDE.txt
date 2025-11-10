@@ -1,0 +1,114 @@
+WebImageDrive 团队交接指南 (当前版本快照)
+============================================================
+
+目的: 帮助嵌入(Embedding)、OCR、索引(Vector/Text) 三位同学快速理解现有后端、数据结构与对接路径。
+
+一、必须先看的文件 (阅读顺序)
+1. architecture.md          # 总体架构与典型数据流 (上传→处理→检索)
+2. docs/PROJECT_STRUCTURE.md # 目录结构与未来扩展位说明
+3. api_spec.yaml             # OpenAPI 接口契约 (16+ 端点)
+4. db_schema.md              # 表结构、字段、索引、迁移与查询示例
+5. api_conventions.md        # 统一响应格式 / 分页 / 错误码分类
+6. docs/API_USAGE.md         # 调用示例与占位返回格式
+
+二、统一响应格式 (Envelope)
+成功: {"success": true, "data": <对象>, "error": null}
+失败: {"success": false, "data": null, "error": {"code": <int>, "message": <str>, "details": <可选>}}
+
+常见/规划错误码: 1001 参数缺失, 1002 空文件名, 2001 认证失败, 2002 Token 过期, 3001 重复上传, 4001 搜索引擎不可用。
+
+三、数据库关键表 (当前 + 建议扩展字段)
+- User(id, username, password_hash, created_at)
+- Image(id, filename, path, checksum, uploader_id, size, mime, category, tags, created_at)
+    * 建议再加: width, height, format, exif_json
+- Embedding(id, image_id, vector_ref, created_at)
+    * 建议再加: model_name, dim, version
+- OCRText(id, image_id, text, created_at)
+    * 建议再加: language, confidence_avg
+- DownloadLog(id, image_id, user_id, timestamp, ip)
+
+去重策略: 上传时生成 checksum → 若已存在则复用已有 Image 记录。
+
+四、各模块对接要点与最小接口合同
+
+[Embedding]
+用途: 图像入库阶段一次性计算向量, 存 sidecar 文件或 pgvector。
+接口建议:
+  compute_embedding(image_path) -> np.ndarray
+  persist_embedding(image_id, vector) -> Embedding(id)
+  get_embedding(image_id) -> Embedding|None
+扩展: model_name, dim, version 用于索引重建与性能评估。
+调用场景: 上传完成或 /api/process/trigger 触发后。
+
+[OCR]
+用途: 提取图像文字, 持久化到 OCRText.text。
+接口建议:
+  run_ocr(image_path) -> str
+  persist_ocr(image_id, text) -> OCRText(id)
+  search_ocr_substring(query, limit, offset) -> list[image_id]
+FTS: SQLite 用 FTS5 虚表; PostgreSQL 用 to_tsvector + GIN。
+幂等: 运行前先查是否已有 OCRText 记录。
+
+[索引 (向量 + 文本)]
+用途: 为 /search/text, /search/similar, /search/ocr 提供检索结果。
+VectorStore 抽象建议 (vector_store.py):
+  add(image_id, embedding)
+  remove(image_id)
+  search_by_vector(vector, top_k) -> [(image_id, score)]
+  search_by_image(image_id, top_k) -> [(image_id, score)]
+文本检索: OCR 查询初期可 LIKE 回退；FTS 不可用时返回错误码 4001。
+评分规范: 统一返回 score 字段 (语义相似度或距离归一到 0~1)。
+
+五、当前可直接调用的后端端点 (占位实现)
+Base URL: http://localhost:5000/api
+  POST /auth/login            -> stub tokens
+  POST /files/upload          -> 保存文件, 返回 filename/path
+  GET  /images                -> 空列表占位结构
+  GET  /images/{id}           -> 占位 metadata
+  GET  /search/text           -> 空 results 结构
+  POST /process/trigger       -> 返回 queued_tasks
+说明: /search/similar, /search/ocr 目前亦是空结构; /analytics/summary 未套统一响应。
+
+六、未来端点返回结构需补齐 (供前端占位准备)
+搜索结果建议:
+  {"success": true, "data": {"query": "...", "results": [ {"image": <Image>, "score": 0.87}, ...], "meta": {...}}, "error": null}
+处理状态建议:
+  {"success": true, "data": {"image_id": 123, "tasks": [{"name": "embedding", "status": "done"}, ...]}, "error": null}
+
+七、性能度量统一字段 (建议建立 docs/PERFORMANCE_METRICS.md)
+嵌入: embed_latency_ms, throughput_images_per_min, dim, model_name
+OCR: ocr_latency_ms, avg_confidence, text_length
+索引: build_time_ms, query_p95_ms, memory_usage_mb, index_type
+
+八、开发流程与幂等策略
+1. 上传阶段: 保存文件 → 计算 checksum → 查重 → 入库 Image → 触发任务 (embedding/ocr)。
+2. 每个计算任务先检查是否已有对应 Embedding/OCRText → 避免重复。
+3. 索引更新: 新增/删除图片后调用 VectorStore.add/remove。
+4. 错误降级: 索引不可用 → 返回空结果 + error.code=4001, success=true/false 视具体策略。
+
+九、迁移与脚本
+快速建表: python scripts/init_db.py
+迁移规划: flask db init / migrate / upgrade (待集成 Flask-Migrate)
+种子数据: 建议新增 scripts/seed_demo.py 生成少量测试图片 & 伪造 OCR/Embedding。
+
+十、当前缺口 & 优先补齐列表
+1. JWT 实装 (auth 占位 → 真实鉴权)
+2. checksum 去重与 Image 元数据写入完善 (size/width/height)
+3. Embedding/OCR pipeline 占位文件与抽象接口
+4. vector_store.py 抽象与搜索结果 schema 确认
+5. FTS 初始化与回退策略文档
+6. 性能指标对齐 (统一统计字段发布)
+
+十一、建议启动顺序 (非严格, 便于并行)
+Week2: pipeline 占位 + 基础计算 + Demo 数据落库
+Week3: 索引构建 + 搜索真实返回 + JWT/权限上线
+Week4: 性能评测 + 统计接口 + 报告撰写 + 清理与打磨
+
+十二、联系点 (示例)
+后端接口 & 结构问题: Flask 负责人
+嵌入模型 & 向量检索: Embedding/索引负责人
+OCR FTS 与文本检索: OCR/索引协作
+文档与统一规范更新: 任一修改方需同步并发起 review
+
+============================================================
+如需补充 UML 时序图或性能指标模板, 可在后续 PR 中附加或向维护者提出。
