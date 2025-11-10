@@ -17,29 +17,40 @@
 - 已提供 DB schema 文档与初始化脚本；迁移（Flask-Migrate）待接入。
 - 依赖已补齐 CORS/YAML/迁移/结构化日志等，便于联调与后续落地。
 
-## 快速开始（推荐 conda）
+## 快速开始（Python 3.13 升级）
 
-Pillow 在某些 Python 版本上构建较麻烦，推荐使用 conda 的 Python 3.11 环境。
+项目现已验证在 **Python 3.13** 下运行（Flask 3.x + Werkzeug 3.x + Pillow 11.x）。
+
+升级注意事项：
+1. 将 Flask 升级到 `3.0.3`，Werkzeug 升级到 `3.0.3`，避免老版本与 3.13 不兼容。
+2. 移除 `passlib[bcrypt]` extra，使用 `pbkdf2_sha256`（避免 bcrypt 在 3.13 下的编译问题）。
+3. 将 `datetime.utcnow()` 改为 `datetime.now(UTC)`（Python 3.13 弃用警告）。
+4. 可选的 Postgres 驱动 `psycopg2-binary` 已注释（对 SQLite 不必安装；3.13 arm64 条件下缺少轮子时会尝试源构建需要 pg_config）。需 Postgres 时：
+	```bash
+	brew install postgresql
+	pip install psycopg2-binary==2.9.9
+	```
+5. 若已有旧环境（3.11），建议新建 3.13 环境隔离验证。
 
 ```bash
 # 使用你已有的 conda（示例）
-conda create -n imagedrive python=3.11 -y
-conda run -n imagedrive pip install -r requirements.txt
+conda create -n imagedrive313 python=3.13 -y
+conda run -n imagedrive313 pip install -r requirements.txt
 
 # 初始化数据库（开发）
-conda run -n imagedrive python scripts/init_db.py
+conda run -n imagedrive313 python scripts/init_db.py
 
 # 运行（方式一：flask run）
-conda run -n imagedrive bash -lc 'export FLASK_APP=app:create_app && flask run'
+conda run -n imagedrive313 bash -lc 'export FLASK_APP=app:create_app && flask run'
 
 # 运行（方式二：python app.py）
-conda run -n imagedrive python app.py
+conda run -n imagedrive313 python app.py
 ```
 
 ### 可选：使用 venv
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv313
+source .venv313/bin/activate
 pip install -r requirements.txt
 export FLASK_APP=app:create_app
 flask run
@@ -240,7 +251,7 @@ black .
 pytest -q
 ```
 
-## 环境变量（开发默认值可用）
+## 环境变量（开发默认值可用 / 3.13 兼容）
 
 参见 `config.py` 与 `.env.example`：
 - `SECRET_KEY`（默认 dev-secret）
@@ -252,6 +263,16 @@ pytest -q
 - 端口占用：修改 `flask run --port` 或 `run.sh` 内端口。
 - SQLite “database is locked”：高并发写入请改用 PostgreSQL 并启用迁移。
 - CORS 报错：启用 Flask-Cors，并在创建 app 时允许前端来源。
+
+## Python 3.13 兼容验证摘要
+
+| 项目 | 结果 |
+|------|------|
+| 安装（不含 Postgres 驱动） | ✅ 成功 |
+| 测试 | ✅ 全部通过 |
+| 时区与时间戳警告 | ✅ 已改用 `datetime.now(UTC)` |
+| 密码哈希 | ✅ 使用 pbkdf2_sha256（passlib） |
+| 可选 Postgres | ⚠️ 需安装 pg_config 或保持注释 |
 
 ## 路线图（短期）
 ## 测试 & 环境自检

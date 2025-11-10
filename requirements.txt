@@ -1,13 +1,13 @@
 ############################
 # Runtime dependencies
 ############################
-Flask==2.2.5
+Flask==3.0.3
 Flask-SQLAlchemy==3.0.3
 python-dotenv==1.0.0
-passlib[bcrypt]==1.7.4
+passlib==1.7.4  # removed [bcrypt] extra; using pbkdf2_sha256 only
 PyJWT==2.8.0
-Pillow==10.0.1
-Werkzeug==2.3.7
+Pillow==11.0.0
+Werkzeug==3.0.3
 
 # CORS for frontend local dev
 Flask-Cors==4.0.0
@@ -23,7 +23,9 @@ Alembic==1.13.1
 filetype==1.2.0
 
 # Optional: Postgres driver (enable if DATABASE_URL uses postgres)
-psycopg2-binary==2.9.9
+# OPTIONAL: Postgres driver. Python 3.13 (arm64) may lack wheel; install only if needed.
+# To use Postgres locally on macOS, first: brew install postgresql && pip install psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9
 
 # Common HTTP client for integrations (OCR/Embedding, webhooks, etc.)
 requests==2.31.0
