@@ -7,6 +7,7 @@ class User(db.Model):
     username = db.Column(db.String(128), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    role = db.Column(db.String(32), default="user")
 
 
 class Image(db.Model):

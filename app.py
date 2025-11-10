@@ -18,13 +18,17 @@ def create_app():
     from blueprints.search import search_bp
     from blueprints.processing import processing_bp
     from blueprints.analytics import analytics_bp
+    from blueprints.web import web_bp
+    from blueprints.users import users_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(users_bp, url_prefix="/api/users")
     app.register_blueprint(files_bp, url_prefix="/api/files")
     app.register_blueprint(images_bp, url_prefix="/api/images")
     app.register_blueprint(search_bp, url_prefix="/api/search")
     app.register_blueprint(processing_bp, url_prefix="/api/process")
     app.register_blueprint(analytics_bp, url_prefix="/api/analytics")
+    app.register_blueprint(web_bp, url_prefix="/web")
 
     @app.route('/')
     def index():

@@ -11,6 +11,7 @@ if ROOT not in sys.path:
 
 from app import create_app, db
 from models import Image, User
+from utils.auth import hash_password
 
 BASE_CATEGORIES = [
     "flowers", "food", "cars", "dogs", "signs", "buildings", "landscapes", "birds", "electronics", "people"
@@ -23,11 +24,11 @@ def main():
         db.create_all()
         # Insert a stub user if none
         if not User.query.first():
-            u = User(username="admin", password_hash="stub")
+            u = User(username="admin", password_hash=hash_password("admin"), role="admin")
             db.session.add(u)
         # Categories currently not a separate table; could refactor later.
         db.session.commit()
-        print("Database initialized. Stub user added (username=admin). Categories list documented in db_schema.md.")
+    print("Database initialized. Admin user added (username=admin / password=admin). Categories list documented in db_schema.md.")
 
 
 if __name__ == "__main__":

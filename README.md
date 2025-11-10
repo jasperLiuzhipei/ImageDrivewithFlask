@@ -72,7 +72,7 @@ WebImageDrive_Flask/
 
 | 模块 | 已实现 | 待实现 |
 |------|--------|--------|
-| 认证 | 路由占位（register/login） | JWT(access/refresh)、黑名单、受保护路由 |
+| 认证 | JWT 登录（register/login/refresh/logout）、受保护路由（/api/users/me） | 刷新黑名单持久化、角色粒度更细权限控制 |
 | 上传 | multipart 保存到 uploads/ | checksum 去重、缩略图生成、Image 元数据入库、下载权限 |
 | 图片 | 列表/详情占位返回 | 分页与过滤、详情返回 OCR/embedding 引用 |
 | 模板前端 | 基础 gallery / upload / detail 页面 | 更丰富的UI、搜索联动、权限提示、缩略图预览 |
@@ -106,9 +106,28 @@ python app.py
 
 3) 示例请求（占位返回，仅用于联调结构）
 ```bash
-# 登录（占位 token）
-curl -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' \
+# 注册
+curl -X POST http://localhost:5000/api/auth/register -H 'Content-Type: application/json' \
 	-d '{"username":"alice","password":"pass"}'
+
+# 登录（返回 access/refresh）
+curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' \
+	-d '{"username":"alice","password":"pass"}' | jq .
+
+# 访问受保护资源
+ACCESS_TOKEN="$(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' \
+	-d '{"username":"alice","password":"pass"}' | jq -r '.data.access_token')"
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:5000/api/users/me | jq .
+
+# 使用 refresh 刷新 access
+REFRESH_TOKEN="$(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' \
+	-d '{"username":"alice","password":"pass"}' | jq -r '.data.refresh_token')"
+curl -X POST http://localhost:5000/api/auth/refresh -H 'Content-Type: application/json' \
+	-d "{\"refresh_token\":\"$REFRESH_TOKEN\"}" | jq .
+
+# 登出（撤销 refresh）
+curl -X POST http://localhost:5000/api/auth/logout -H 'Content-Type: application/json' \
+	-d "{\"refresh_token\":\"$REFRESH_TOKEN\"}" | jq .
 
 # 上传
 curl -X POST http://localhost:5000/api/files/upload -F 'file=@/path/to/img.png'
@@ -183,7 +202,7 @@ python scripts/verify_env.py
 
 ### 4. 持续扩展计划（测试）
 - 增加：上传 → 列表 → 详情 流程集成测试
-- 增加：JWT 认证流程测试（登录/刷新/访问保护资源）
+- 增加：JWT 认证流程测试（登录/刷新/访问保护资源）— 已添加基础用例，将持续扩展错误场景
 - 增加：搜索接口在索引不可用时的降级行为测试
 
 
