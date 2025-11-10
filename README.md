@@ -139,6 +139,87 @@ curl 'http://localhost:5000/api/images?page=1&page_size=20'
 curl 'http://localhost:5000/api/search/text?q=coffee&k=10'
 ```
 
+## 认证与权限（JWT）指南
+
+本项目已内置完整的基于 JWT 的登录与权限控制，包含 access/refresh 双令牌、刷新与登出（撤销 refresh）。
+
+### 快速上手（命令行示例）
+
+```bash
+# 1) 注册（仅需一次）
+curl -X POST http://localhost:5000/api/auth/register -H 'Content-Type: application/json' \
+	-d '{"username":"alice","password":"pass"}'
+
+# 2) 登录，获得 access 与 refresh
+LOGIN=$(curl -s -X POST http://localhost:5000/api/auth/login -H 'Content-Type: application/json' \
+	-d '{"username":"alice","password":"pass"}')
+ACCESS_TOKEN=$(echo "$LOGIN" | python -c 'import sys,json;print(json.load(sys.stdin)["data"]["access_token"])')
+REFRESH_TOKEN=$(echo "$LOGIN" | python -c 'import sys,json;print(json.load(sys.stdin)["data"]["refresh_token"])')
+
+# 3) 访问受保护资源
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:5000/api/users/me | python -m json.tool
+
+# 4) 刷新 access（当 access 临期或失效时）
+curl -s -X POST http://localhost:5000/api/auth/refresh -H 'Content-Type: application/json' \
+	-d "{\"refresh_token\":\"$REFRESH_TOKEN\"}" | python -m json.tool
+
+# 5) 登出（撤销 refresh）
+curl -X POST http://localhost:5000/api/auth/logout -H 'Content-Type: application/json' \
+	-d "{\"refresh_token\":\"$REFRESH_TOKEN\"}" | python -m json.tool
+```
+
+如果你安装了 jq，可把上面的 python 解析替换为更简洁的 jq 表达式。
+
+### 令牌负载与生命周期
+
+- access/refresh 的 JWT 负载均包含：
+	- `sub`（字符串化的用户ID）、`role`（用户角色）、`type`（access 或 refresh）
+	- `iat`（签发时间）、`exp`（过期时间）、`nonce`（随机数，保证同秒签发也不同）
+- 过期配置（见 `config.py`，可用环境变量覆盖）：
+	- `JWT_ACCESS_EXPIRES_MINUTES`（默认 30 分钟）
+	- `JWT_REFRESH_EXPIRES_DAYS`（默认 7 天）
+- 签名算法：`JWT_ALGORITHM`（默认 HS256），密钥为 `SECRET_KEY`
+
+### 错误码（节选）
+
+- 1001：缺少用户名或密码
+- 1003：用户名已存在
+- 1004：凭证错误
+- 2001：缺少 Bearer 令牌
+- 2002：访问令牌无效或已过期
+- 2003：角色权限不足
+- 2004：缺少 refresh 令牌
+- 2005：refresh 令牌无效
+- 2006：refresh 令牌已被撤销
+
+### 角色与权限
+
+- `models.User.role`：默认 `user`，可设为 `admin`
+- 在受保护的路由中可使用装饰器：
+
+```python
+from utils.auth import jwt_required
+
+@app.route('/api/admin/only')
+@jwt_required(role='admin')
+def admin_only():
+		...
+```
+
+### 环境变量（认证相关）
+
+- `SECRET_KEY`：JWT 签名密钥（生产务必设置为强随机值）
+- `JWT_ALGORITHM`：默认 `HS256`
+- `JWT_ACCESS_EXPIRES_MINUTES`：默认 `30`
+- `JWT_REFRESH_EXPIRES_DAYS`：默认 `7`
+
+### 安全建议（生产）
+
+- 使用强 `SECRET_KEY`，全站 HTTPS，限制令牌存放位置（HttpOnly/SameSite）
+- 将 refresh 撤销表持久化（当前为内存字典，仅用于开发），并定期清理过期记录
+- 按业务设计更细粒度的 RBAC（基于资源/动作的策略）
+
+
 ## 团队协作指引
 
 - 按文档入口顺序先对齐规范，再开发代码。
