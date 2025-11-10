@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+{% block title %}上传图片 - WebImageDrive{% endblock %}
+{% block content %}
+<h1 class="h4">上传图片</h1>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">选择文件</label>
+    <input class="form-control" type="file" name="file" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">类别（可选）</label>
+    <input class="form-control" type="text" name="category" placeholder="如：animal">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">标签（可选，逗号分隔）</label>
+    <input class="form-control" type="text" name="tags" placeholder="cat,cute,indoor">
+  </div>
+  <button class="btn btn-primary" type="submit">上传</button>
+  <a class="btn btn-link" href="{{ url_for('web.gallery') }}">返回图库</a>
+  </form>
+{% endblock %}

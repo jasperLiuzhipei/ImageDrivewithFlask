@@ -75,6 +75,7 @@ WebImageDrive_Flask/
 | 认证 | 路由占位（register/login） | JWT(access/refresh)、黑名单、受保护路由 |
 | 上传 | multipart 保存到 uploads/ | checksum 去重、缩略图生成、Image 元数据入库、下载权限 |
 | 图片 | 列表/详情占位返回 | 分页与过滤、详情返回 OCR/embedding 引用 |
+| 模板前端 | 基础 gallery / upload / detail 页面 | 更丰富的UI、搜索联动、权限提示、缩略图预览 |
 | 搜索 | text/similar/ocr 路由占位 | 向量检索/FTS/评分字段、结果 schema 规范化 |
 | 处理 | trigger 占位 | 任务状态、作业持久化、失败重试 |
 | 分析 | summary 占位 | 统计计算与导出 CSV/JSON，一致响应 |
@@ -83,6 +84,10 @@ WebImageDrive_Flask/
 | 测试 | 待补充 | pytest 基础用例 + CI |
 
 ## 常用开发流程
+### 前端（Flask 模板）快速预览
+启动后浏览器访问：`http://localhost:5000/web/` 查看图库，`/web/upload` 上传文件；重复文件会提示并跳转到已有详情。
+模板文件位于 `templates/`，新增页面时：创建模板 + 在 `blueprints/web.py` 加路由。
+
 
 1) 初始化数据库（开发）
 ```bash

@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+{% block title %}图片详情 - WebImageDrive{% endblock %}
+{% block content %}
+<h1 class="h4">图片详情</h1>
+<dl class="row">
+  <dt class="col-sm-3">ID</dt><dd class="col-sm-9">{{ image.id }}</dd>
+  <dt class="col-sm-3">文件名</dt><dd class="col-sm-9">{{ image.filename }}</dd>
+  <dt class="col-sm-3">路径</dt><dd class="col-sm-9"><code>{{ image.path }}</code></dd>
+  <dt class="col-sm-3">大小</dt><dd class="col-sm-9">{{ image.size or '-' }}</dd>
+  <dt class="col-sm-3">类别</dt><dd class="col-sm-9">{{ image.category or '-' }}</dd>
+  <dt class="col-sm-3">标签</dt><dd class="col-sm-9">{{ image.tags or '-' }}</dd>
+  <dt class="col-sm-3">校验和</dt><dd class="col-sm-9">{{ image.checksum or '-' }}</dd>
+  <dt class="col-sm-3">创建时间</dt><dd class="col-sm-9">{{ image.created_at }}</dd>
+</dl>
+
+<a class="btn btn-secondary" href="{{ url_for('web.gallery') }}">返回图库</a>
+{% endblock %}
