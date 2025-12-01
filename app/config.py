@@ -24,7 +24,8 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # JWT
-    JWT_TOKEN_LOCATION = ["headers"]
+    JWT_TOKEN_LOCATION = ["headers", "query_string"]
+    JWT_QUERY_STRING_NAME = os.environ.get("JWT_QUERY_STRING_NAME", "jwt")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES", 3600))  # seconds
 
     # CORS (placeholder)

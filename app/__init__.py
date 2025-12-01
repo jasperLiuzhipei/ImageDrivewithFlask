@@ -13,6 +13,8 @@ from .blueprints.ingest import ingest_bp
 from .blueprints.search import search_bp
 from .blueprints.search_ocr import search_ocr_bp
 from .blueprints.analytics import analytics_bp
+from .blueprints.images import images_bp
+from .blueprints.logs import logs_bp
 
 BLUEPRINTS = [
     core_bp,
@@ -22,6 +24,8 @@ BLUEPRINTS = [
     search_bp,
     search_ocr_bp,
     analytics_bp,
+    images_bp,
+    logs_bp,
 ]
 
 def register_blueprints(app: Flask) -> None:

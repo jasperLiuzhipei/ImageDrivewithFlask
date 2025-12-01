@@ -42,14 +42,20 @@ def search_ocr():
     results = []
     for row in items:
         txt = row.text or ""
-        # produce a small snippet
         idx = txt.lower().find(q.lower())
         start = max(0, idx - 30) if idx >= 0 else 0
         end = min(len(txt), (idx + len(q) + 30) if idx >= 0 else 120)
         snippet = txt[start:end]
-        results.append({
-            "image_id": row.image_id,
-            "snippet": snippet,
-        })
+        img = Image.query.get(int(row.image_id))
+        results.append(
+            {
+                "image_id": int(row.image_id),
+                "snippet": snippet,
+                "original_filename": getattr(img, "original_filename", None),
+                "mime_type": getattr(img, "mime_type", None),
+                "thumb_url": f"/api/v1/files/{int(row.image_id)}/thumb",
+                "download_url": f"/api/v1/files/{int(row.image_id)}/download",
+            }
+        )
 
-    return ok({"query": q, "items": results, "count": len(results)})
+    return ok({"query": q, "results": results, "count": len(results)})

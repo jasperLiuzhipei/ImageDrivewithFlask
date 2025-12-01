@@ -7,26 +7,23 @@
       </template>
     </el-input>
     <el-empty v-if="!rows.length && inited" description="无结果，尝试其他关键词或先进行 OCR 入库" style="margin-top: 16px;" />
-    <el-table :data="rows" v-if="rows.length" style="margin-top: 16px">
-      <el-table-column prop="image_id" label="Image ID" width="140" />
-      <el-table-column label="Snippet">
-        <template #default="{ row }">
-          <el-tooltip :content="row.snippet" placement="top-start">
-            <span class="clip">{{ row.snippet }}</span>
-          </el-tooltip>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="140">
-        <template #default="{ row }">
-          <el-button size="small" @click="goSimilar(row.image_id)">查看相似</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-row :gutter="12" v-if="rows.length" style="margin-top: 16px">
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="row in rows" :key="row.image_id">
+        <el-card shadow="hover" class="card">
+          <img class="thumb" :src="withJwtAbs(row.thumb_url)" />
+          <div class="meta">
+            <div class="name">{{ row.original_filename }}</div>
+            <div class="clip">{{ row.snippet }}</div>
+            <div style="margin-top:6px"><el-button size="small" @click="goSimilar(row.image_id)">查看相似</el-button></div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </el-card>
   <el-skeleton v-if="loading" :rows="4" animated style="margin-top: 12px" />
 </template>
 <script setup lang="ts">
-import api from '../api'
+import api, { API_BASE } from '../api'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
@@ -37,6 +34,15 @@ const rows = ref<any[]>([])
 const loading = ref(false)
 const inited = ref(false)
 const router = useRouter()
+
+function toAbs(u: string) { try { return new URL(u, API_BASE).toString() } catch { return u } }
+function withJwtAbs(u: string) {
+  const t = localStorage.getItem('token')
+  if (!u) return u
+  const abs = toAbs(u)
+  const sep = abs.includes('?') ? '&' : '?'
+  return t ? `${abs}${sep}jwt=${encodeURIComponent(t)}` : abs
+}
 
 async function onSearch() {
   loading.value = true
@@ -58,4 +64,7 @@ function goSimilar(id: number) {
 <style scoped>
 .clip { display: inline-block; max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .title { display:flex; align-items:center; gap:8px; font-weight:600; margin-bottom:8px; }
+.card { cursor:default }
+.thumb { width: 100%; height: 160px; object-fit: cover; border-radius:4px }
+.name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

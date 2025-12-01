@@ -13,13 +13,14 @@
   <el-result v-if="errorMsg" icon="warning" :title="'登录失败'" :sub-title="errorMsg" />
 </template>
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../store_auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuth()
 const form = reactive({ username: '', password: '' })
 const rules: FormRules = {
@@ -44,6 +45,13 @@ async function onLogin() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  const qname = route.query.username
+  if (typeof qname === 'string') {
+    form.username = qname
+  }
+})
 </script>
 <style scoped>
 .card { max-width: 420px; margin: 56px auto; }

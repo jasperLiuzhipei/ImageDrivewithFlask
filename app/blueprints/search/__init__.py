@@ -9,6 +9,8 @@ from app.services.vector_index import FaissVectorIndex
 from app.services import index_store
 from app.services.clip_runtime import embed_text
 from app.utils.responses import ok, error
+from app.utils.audit import write_audit
+import time
 
 search_bp = Blueprint("search", __name__, url_prefix="/api/v1/search")
 
@@ -16,6 +18,7 @@ search_bp = Blueprint("search", __name__, url_prefix="/api/v1/search")
 @search_bp.post("/vector")
 @jwt_required()
 def search_by_vector():
+    t0 = time.time()
     """直接用提交的向量检索相似图片（便于无模型环境下联调）。
 
     Request JSON:
@@ -61,8 +64,29 @@ def search_by_vector():
             index.build(vectors)
             inds, sims = index.search_topk_scores(vector, k=min(k, len(vectors)))
             pairs = [(int(image_ids[int(i)]), float(s)) for i, s in zip(inds, sims)]
-        results = [{"image_id": iid, "similarity": sim, "rank": r + 1} for r, (iid, sim) in enumerate(pairs)]
-        return ok({"results": results, "count": len(results)})
+        iid_list = [int(iid) for iid, _ in pairs]
+        imgs = Image.query.filter(Image.id.in_(iid_list)).all()
+        info = {i.id: i for i in imgs}
+        results = []
+        for r, (iid, sim) in enumerate(pairs):
+            meta = info.get(int(iid))
+            results.append(
+                {
+                    "image_id": int(iid),
+                    "similarity": float(sim),
+                    "rank": r + 1,
+                    "original_filename": getattr(meta, "original_filename", None),
+                    "mime_type": getattr(meta, "mime_type", None),
+                    "thumb_url": f"/api/v1/files/{int(iid)}/thumb",
+                    "download_url": f"/api/v1/files/{int(iid)}/download",
+                }
+            )
+        resp = ok({"results": results, "count": len(results)})
+        try:
+            write_audit(user_id, "search_vector", None, None, {"k": k, "duration_ms": (time.time() - t0) * 1000})
+        except Exception:
+            pass
+        return resp
     except ValueError as e:
         # Common case: 查询向量维度与索引维度不一致
         return error("VECTOR_DIM_MISMATCH", str(e))
@@ -90,6 +114,7 @@ def search_by_vector():
 @search_bp.post("/text")
 @jwt_required()
 def search_text():
+    t0 = time.time()
     """文本检索：embed_text(query) → 在当前用户可见集上检索 top‑K。
 
     Request JSON:
@@ -139,8 +164,29 @@ def search_text():
             index.build(vectors)
             inds, sims = index.search_topk_scores(vec, k=min(k, len(vectors)))
             pairs = [(int(image_ids[int(i)]), float(s)) for i, s in zip(inds, sims)]
-        results = [{"image_id": iid, "similarity": sim, "rank": r + 1} for r, (iid, sim) in enumerate(pairs)]
-        return ok({"results": results, "count": len(results)})
+        iid_list = [int(iid) for iid, _ in pairs]
+        imgs = Image.query.filter(Image.id.in_(iid_list)).all()
+        info = {i.id: i for i in imgs}
+        results = []
+        for r, (iid, sim) in enumerate(pairs):
+            meta = info.get(int(iid))
+            results.append(
+                {
+                    "image_id": int(iid),
+                    "similarity": float(sim),
+                    "rank": r + 1,
+                    "original_filename": getattr(meta, "original_filename", None),
+                    "mime_type": getattr(meta, "mime_type", None),
+                    "thumb_url": f"/api/v1/files/{int(iid)}/thumb",
+                    "download_url": f"/api/v1/files/{int(iid)}/download",
+                }
+            )
+        resp = ok({"results": results, "count": len(results)})
+        try:
+            write_audit(user_id, "search_text", None, None, {"k": k, "query": query, "duration_ms": (time.time() - t0) * 1000})
+        except Exception:
+            pass
+        return resp
     except ValueError as e:
         return error("VECTOR_DIM_MISMATCH", str(e))
     except ImportError:
@@ -167,6 +213,7 @@ def search_text():
 @search_bp.get("/image/<int:image_id>/similar")
 @jwt_required()
 def similar_images(image_id: int):
+    t0 = time.time()
     """基于库内向量做“以图找图”。只在当前用户可见集上检索。
 
     Query params:
@@ -224,8 +271,29 @@ def similar_images(image_id: int):
             inds, sims = index.search_topk_scores(ref_vec, k=kq)
             temp_pairs = [(int(image_ids[int(i)]), float(s)) for i, s in zip(inds, sims)]
             pairs = [(iid, sim) for (iid, sim) in temp_pairs if iid != image_id][:k]
-        results = [{"image_id": iid, "similarity": sim, "rank": r + 1} for r, (iid, sim) in enumerate(pairs)]
-        return ok({"results": results, "count": len(results)})
+        iid_list = [int(iid) for iid, _ in pairs]
+        imgs = Image.query.filter(Image.id.in_(iid_list)).all()
+        info = {i.id: i for i in imgs}
+        results = []
+        for r, (iid, sim) in enumerate(pairs):
+            meta = info.get(int(iid))
+            results.append(
+                {
+                    "image_id": int(iid),
+                    "similarity": float(sim),
+                    "rank": r + 1,
+                    "original_filename": getattr(meta, "original_filename", None),
+                    "mime_type": getattr(meta, "mime_type", None),
+                    "thumb_url": f"/api/v1/files/{int(iid)}/thumb",
+                    "download_url": f"/api/v1/files/{int(iid)}/download",
+                }
+            )
+        resp = ok({"results": results, "count": len(results)})
+        try:
+            write_audit(user_id, "similar_images", "image", image_id, {"k": k, "duration_ms": (time.time() - t0) * 1000})
+        except Exception:
+            pass
+        return resp
     except ImportError:
         # 纯 Python 备用实现（归一化点积）
         import math

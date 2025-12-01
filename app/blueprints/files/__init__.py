@@ -12,6 +12,7 @@ from app.services.clip_runtime import embed_image_path
 from app.services.ocr import extract_text as ocr_extract
 from app.services.embedding_io import l2_normalize, to_bytes
 from app.utils.responses import ok, error
+from app.utils.audit import write_audit
 
 files_bp = Blueprint("files", __name__, url_prefix="/api/v1/files")
 
@@ -107,16 +108,76 @@ def upload_file():
 
     # TODO: dispatch async tasks (generate thumbnails, OCR)
 
-    return ok(
-        {
-            "image_id": img.id,
-            "original_filename": img.original_filename,
-            "storage_uri": img.storage_uri,
-            "mime_type": img.mime_type,
-            "checksum": img.checksum,
-            "status": img.status,
-            "visibility": img.visibility,
-            "has_embedding": bool(vec),
-            "has_ocr_text": bool(text) if 'text' in locals() else False,
-        }
-    )
+    payload = {
+        "image_id": img.id,
+        "original_filename": img.original_filename,
+        "storage_uri": img.storage_uri,
+        "mime_type": img.mime_type,
+        "checksum": img.checksum,
+        "status": img.status,
+        "visibility": img.visibility,
+        "has_embedding": bool(vec),
+        "has_ocr_text": bool(text) if 'text' in locals() else False,
+    }
+    try:
+        write_audit(owner_id, "upload", "image", img.id, {"mime": mime})
+    except Exception:
+        pass
+    return ok(payload)
+
+@files_bp.get("/<int:image_id>/download")
+@jwt_required()
+def download_file(image_id: int):
+    from flask import send_file
+    owner_id = int(get_jwt_identity())
+    img = Image.query.get(image_id)
+    if not img or img.owner_id != owner_id:
+        return error("IMAGE_NOT_FOUND", "图片不存在或不属于当前用户", http=404)
+    uri = img.storage_uri or ""
+    if not uri.startswith("local://"):
+        return error("UNSUPPORTED_STORAGE", "当前仅支持本地存储的下载")
+    fname = uri[len("local://"):]
+    path = os.path.join(current_app.config.get("UPLOAD_DIR"), fname)
+    if not os.path.exists(path):
+        return error("FILE_NOT_FOUND", "文件不存在", http=404)
+    resp = send_file(path, as_attachment=True, download_name=img.original_filename or fname)
+    try:
+        write_audit(owner_id, "download", "image", img.id, {})
+    except Exception:
+        pass
+    return resp
+
+@files_bp.get("/<int:image_id>/thumb")
+@jwt_required()
+def thumbnail(image_id: int):
+    from flask import send_file
+    owner_id = int(get_jwt_identity())
+    img = Image.query.get(image_id)
+    if not img or img.owner_id != owner_id:
+        return error("IMAGE_NOT_FOUND", "图片不存在或不属于当前用户", http=404)
+    uri = img.storage_uri or ""
+    if not uri.startswith("local://"):
+        return error("UNSUPPORTED_STORAGE", "当前仅支持本地存储的缩略图")
+    fname = uri[len("local://"):]
+    root = current_app.config.get("UPLOAD_DIR")
+    src = os.path.join(root, fname)
+    if not os.path.exists(src):
+        return error("FILE_NOT_FOUND", "文件不存在", http=404)
+    thumbs = os.path.join(root, "thumbs")
+    os.makedirs(thumbs, exist_ok=True)
+    out = os.path.join(thumbs, f"{image_id}.jpg")
+    if not os.path.exists(out):
+        try:
+            from PIL import Image as PILImage  # type: ignore
+            with PILImage.open(src) as im:
+                im = im.convert("RGB")
+                im.thumbnail((256, 256))
+                im.save(out, format="JPEG", quality=85)
+        except Exception:
+            return error("THUMB_FAIL", "缩略图生成失败")
+    resp = send_file(out, mimetype="image/jpeg")
+    try:
+        write_audit(owner_id, "thumb", "image", img.id, {})
+    except Exception:
+        pass
+    return resp

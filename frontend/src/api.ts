@@ -28,3 +28,4 @@ api.interceptors.response.use(
 )
 
 export default api
+export const API_BASE = BASE_URL

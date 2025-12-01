@@ -7,36 +7,50 @@
       </template>
     </el-input>
     <el-empty v-if="!rows.length && inited" description="无结果，请确认 image_id 是否存在或多上传几张" style="margin-top: 16px;" />
-    <el-table :data="rows" v-if="rows.length" style="margin-top: 16px">
-      <el-table-column prop="rank" label="#" width="60" />
-      <el-table-column prop="image_id" label="Image ID" width="140" />
-      <el-table-column label="Similarity" width="220">
-        <template #default="{ row }">
-          <el-progress :percentage="Math.round((row.similarity || 0) * 100)" :text-inside="true" :stroke-width="16" status="success" />
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-row :gutter="12" v-if="rows.length" style="margin-top: 16px">
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="row in rows" :key="row.image_id">
+        <el-card shadow="hover" class="card" @click="open(row.image_id)">
+          <img class="thumb" :src="withJwtAbs(row.thumb_url)" />
+          <div class="meta">
+            <div class="name">{{ row.original_filename }}</div>
+            <el-progress :percentage="Math.round((row.similarity || 0) * 100)" :text-inside="true" :stroke-width="14" />
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </el-card>
   <el-skeleton v-if="loading" :rows="4" animated style="margin-top: 12px" />
-</template>
+  </template>
 <script setup lang="ts">
-import api from '../api'
+import api, { API_BASE } from '../api'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const imageId = ref<number | null>(null)
 const rows = ref<any[]>([])
 const loading = ref(false)
 const inited = ref(false)
 
+function toAbs(u: string) { try { return new URL(u, API_BASE).toString() } catch { return u } }
+function withJwtAbs(u: string) {
+  const t = localStorage.getItem('token')
+  if (!u) return u
+  const abs = toAbs(u)
+  const sep = abs.includes('?') ? '&' : '?'
+  return t ? `${abs}${sep}jwt=${encodeURIComponent(t)}` : abs
+}
+
+function open(id: number) { router.push(`/images/${id}`) }
+
 async function onSearch() {
   if (!imageId.value) return ElMessage.warning('请输入 Image ID')
   loading.value = true
   try {
-    const { data } = await api.get(`/search/image/${imageId.value}/similar`, { params: { top_k: 10 } })
+    const { data } = await api.get(`/search/image/${imageId.value}/similar`, { params: { k: 10 } })
     rows.value = data.data.results || []
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '检索失败')
@@ -47,7 +61,7 @@ async function onSearch() {
 }
 
 onMounted(() => {
-  const qid = route.query.id
+  const qid:any = route.query.id
   if (qid) {
     const num = Number(qid)
     if (!Number.isNaN(num)) {
@@ -59,4 +73,7 @@ onMounted(() => {
 </script>
 <style scoped>
 .title { display:flex; align-items:center; gap:8px; font-weight:600; margin-bottom:8px; }
+.card { cursor:pointer }
+.thumb { width: 100%; height: 160px; object-fit: cover; border-radius:4px }
+.name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

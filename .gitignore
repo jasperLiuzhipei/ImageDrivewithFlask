@@ -23,6 +23,10 @@ uploads/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/.env
+
+# Docker local volumes
+.docker/pgdata/
 
 # VS Code
 .history/

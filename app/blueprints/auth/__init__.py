@@ -72,3 +72,22 @@ def me():
         raise AppError("USER_NOT_FOUND", "用户不存在", http=404)
     return ok({"user_id": user.id, "username": user.username})
 
+
+@auth_bp.post("/change_password")
+@jwt_required()
+def change_password():
+    data = request.get_json(silent=True) or {}
+    old_password = data.get("old_password", "")
+    new_password = data.get("new_password", "")
+    if len(new_password) < 6:
+        return error("WEAK_PASSWORD", "新密码至少 6 位")
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
+    if not user:
+        return error("USER_NOT_FOUND", "用户不存在", http=404)
+    if not verify_password(old_password, user.password_hash):
+        return error("BAD_OLD_PASSWORD", "原密码不正确", http=400)
+    user.password_hash = hash_password(new_password)
+    db.session.commit()
+    return ok({"user_id": user.id, "username": user.username})
+

@@ -43,7 +43,10 @@ def extract_text(image_path: str) -> Optional[str]:  # pragma: no cover
     if mod is None:
         return None
     try:
-        func = getattr(mod, "extract_text_from_image_path", None)
+        # Prefer teammate's canonical name `process_image`, fallback to historical name
+        func = getattr(mod, "process_image", None)
+        if not callable(func):
+            func = getattr(mod, "extract_text_from_image_path", None)
         if not callable(func):
             return None
         return func(image_path)
@@ -56,9 +59,17 @@ def extract_text_batch(image_paths: List[str], batch_size: int = 32) -> List[Opt
     if mod is None:
         return [None] * len(image_paths)
     try:
+        # Prefer teammate's canonical batch name
         func = getattr(mod, "process_image_batch", None)
         if callable(func):
-            return func(image_paths, batch_size=batch_size)
+            try:
+                return func(image_paths, batch_size=batch_size)
+            except TypeError:
+                # If teammate didn't implement batch_size kw, try positional or no arg
+                try:
+                    return func(image_paths, batch_size)
+                except TypeError:
+                    return func(image_paths)
         # fallback to per-image
         return [extract_text(p) for p in image_paths]
     except Exception:

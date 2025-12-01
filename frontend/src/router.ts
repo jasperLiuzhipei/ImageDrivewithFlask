@@ -6,6 +6,10 @@ import SearchText from './pages/SearchText.vue'
 import SearchOCR from './pages/SearchOCR.vue'
 import Similar from './pages/Similar.vue'
 import Health from './pages/Health.vue'
+import Gallery from './pages/Gallery.vue'
+import ImageDetail from './pages/ImageDetail.vue'
+import Analytics from './pages/Analytics.vue'
+import Logs from './pages/Logs.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -17,6 +21,10 @@ export const router = createRouter({
     { path: '/search/text', component: SearchText },
     { path: '/search/ocr', component: SearchOCR },
     { path: '/similar', component: Similar },
-    { path: '/health', component: Health }
+    { path: '/health', component: Health },
+    { path: '/gallery', component: Gallery },
+    { path: '/images/:id', component: ImageDetail },
+    { path: '/analytics', component: Analytics },
+    { path: '/logs', component: Logs }
   ]
 })

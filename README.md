@@ -6,7 +6,7 @@ This is a minimal Flask backend scaffold with an application factory, configurat
 
 - App factory: `app/create_app`
 - Config classes: `app/config.py` (dev/prod/test)
-- Extensions: SQLAlchemy, Migrate, JWT (no DB models yet)
+- Extensions: SQLAlchemy, Migrate, JWT
 - Blueprints:
   - `core` (/api/v1, /api/v1/health)
   - `auth`, `files`, `ingest`, `search`, `search_ocr`, `analytics` (placeholders)
@@ -138,6 +138,25 @@ Configuration precedence: defaults < .env < environment variables.
 - Select config via `FLASK_CONFIG=dev|prod|test` (default `dev`).
 - Default DB is SQLite file at `./instance/app.db`.
 - In production, you must set a strong `SECRET_KEY` (app will refuse to start if using default).
+
+## PostgreSQL 16（Docker）
+
+- 启动数据库：
+  - 在项目根目录运行 `docker compose up -d`
+- 配置环境：
+  - 将 `.env.example` 复制为 `.env` 并设置 `DATABASE_URL=postgresql://webimg:webimg@localhost:5432/webimagedrive`
+  - 本项目会在启动时自动加载 `.env`（通过 `python-dotenv`）
+- 执行迁移：
+  - `export FLASK_APP="app:create_app"`
+  - `flask db migrate -m "init pg schema"`
+  - `flask db upgrade`
+- 启动后端与验证：
+  - `flask run --port 5000`
+  - `curl -s http://127.0.0.1:5000/api/v1/health | jq`
+- 团队一致性：
+  - 所有人使用仓库内同一份 `docker-compose.yml` 启动 PostgreSQL 16。
+  - 数据持久化路径挂载到 `./.docker/pgdata`，便于本地开发。
+  - IDE 的 Run/Debug 配置请确保加载 `.env` 或显式设置 `DATABASE_URL`。
 
 ## Next steps
 

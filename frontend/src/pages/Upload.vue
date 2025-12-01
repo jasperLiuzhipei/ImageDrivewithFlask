@@ -9,7 +9,7 @@
       </template>
     </el-upload>
     <el-divider />
-    <el-result v-if="resp && resp.code===0" icon="success" title="上传成功">
+    <el-result v-if="resp && resp.status==='ok'" icon="success" title="上传成功">
       <template #sub-title>
         <el-descriptions :column="1" size="small" border>
           <el-descriptions-item label="image_id">{{ resp.data.image_id }}</el-descriptions-item>
@@ -22,7 +22,7 @@
         </div>
       </template>
     </el-result>
-    <el-alert v-else-if="resp && resp.code!==0" type="error" :title="resp.message || '上传失败'" show-icon />
+    <el-alert v-else-if="resp && resp.status==='error'" type="error" :title="resp.message || '上传失败'" show-icon />
   </el-card>
 </template>
 <script setup lang="ts">
@@ -39,7 +39,7 @@ async function doUpload(options: any) {
   const form = new FormData()
   form.append('file', options.file)
   try {
-    const { data } = await api.post('/files/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    const { data } = await api.post('/files/upload', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })
     resp.value = data
     ElMessage.success('上传成功')
   } catch (e: any) {
