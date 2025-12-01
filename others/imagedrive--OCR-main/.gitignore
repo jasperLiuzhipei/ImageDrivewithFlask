@@ -1,0 +1,22 @@
+# Python 缓存
+__pycache__/
+*.pyc
+
+# Conda / 虚拟环境
+# (如果您的环境在文件夹内，请取消注释下一行)
+# /imagedrive/
+.env
+.venv
+
+# macOS 系统文件
+.DS_Store
+.AppleDouble
+
+# IDE / 编辑器配置
+.vscode/
+.idea/
+
+# 日志和下载器缓存
+*.log
+/Users/einson/.paddlex/
+/Users/einson/.cache/doctr/

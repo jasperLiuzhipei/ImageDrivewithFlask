@@ -1,0 +1,25 @@
+# Minimal runtime deps (pip side). Heavy binaries (torch/vision/faiss) via conda.
+
+# Core
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+Flask-Migrate>=4.0
+Flask-JWT-Extended>=4.6
+python-dotenv>=1.0
+bcrypt>=4.0
+
+# Embeddings & Similarity
+sentence-transformers>=2.6
+tqdm>=4.66
+numpy>=2,<3
+Pillow>=10.0
+faiss-cpu; platform_system != "Darwin"  # Prefer conda for macOS
+
+# OCR
+# torch/torchvision should be installed via conda (see environment.yml)
+python-doctr==1.0.0
+opencv-python-headless>=4.8
+rapidfuzz>=3.6
+
+# Database drivers
+psycopg2-binary>=2.9

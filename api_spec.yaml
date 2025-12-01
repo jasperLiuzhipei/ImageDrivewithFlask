@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: WebImageDrive API
+  version: 0.1.0
+  description: Minimal API skeleton for backend scaffolding
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /auth/login:
+    post:
+      summary: Login (placeholder)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+  /files/upload:
+    post:
+      summary: Upload a file (placeholder)
+      responses:
+        "202":
+          description: Accepted
+  /search/text:
+    get:
+      summary: Text semantic search (placeholder)
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: top_k
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Results
+  /search/image:
+    post:
+      summary: Image-to-image search (placeholder)
+      responses:
+        "200":
+          description: Results
+  /images/{id}/similar:
+    get:
+      summary: Similar images by id (placeholder)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Results
+  /search/ocr:
+    post:
+      summary: OCR text search
+      description: 使用 OCR 文本在当前用户图片中进行模糊匹配检索。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                top_k:
+                  type: integer
+                  default: 10
+            examples:
+              simple:
+                summary: 基础检索
+                value:
+                  query: "invoice"
+                  top_k: 10
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      query:
+                        type: string
+                      count:
+                        type: integer
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            image_id:
+                              type: integer
+                            snippet:
+                              type: string
+              examples:
+                success:
+                  value:
+                    status: ok
+                    data:
+                      query: "invoice"
+                      count: 2
+                      items:
+                        - image_id: 14
+                          snippet: "ACME Corp Invoice #1234 total $199.00"
+                        - image_id: 22
+                          snippet: "...invoice details..."
+  /ingest/ocr:
+    post:
+      summary: Run OCR for a single image and persist
+      description: 仅支持本地存储（storage_uri=local://...）且属于当前用户的图片；可选返回文本预览。
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [image_id]
+              properties:
+                image_id:
+                  type: integer
+                include_text:
+                  type: boolean
+                  default: false
+                snippet_len:
+                  type: integer
+                  default: 120
+            examples:
+              basic:
+                summary: 最小入参
+                value:
+                  image_id: 13
+              with_preview:
+                summary: 返回文本预览
+                value:
+                  image_id: 13
+                  include_text: true
+                  snippet_len: 50
+      responses:
+        "200":
+          description: OCR result stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      image_id:
+                        type: integer
+                      has_text:
+                        type: boolean
+                      created:
+                        type: boolean
+                      text_preview:
+                        type: string
+                        description: Present if include_text is true
+              examples:
+                ok_with_preview:
+                  value:
+                    status: ok
+                    data:
+                      image_id: 13
+                      has_text: true
+                      created: false
+                      text_preview: "Hello OCRfrom Doctr"
+  /ingest/ocr/batch:
+    post:
+      summary: Run OCR for multiple images and persist
+      description: 优先调用组员的批处理函数（process_image_batch）；否则逐张降级。仅处理本地存储且属于当前用户的图片。
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_ids:
+                  type: array
+                  items:
+                    type: integer
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      image_id:
+                        type: integer
+                batch_size:
+                  type: integer
+                  default: 32
+                include_text:
+                  type: boolean
+                  default: false
+                snippet_len:
+                  type: integer
+                  default: 120
+            examples:
+              ids_form:
+                summary: 使用 image_ids 形式
+                value:
+                  image_ids: [12, 13, 14]
+                  batch_size: 32
+                  include_text: true
+                  snippet_len: 50
+              items_form:
+                summary: 使用 items 形式
+                value:
+                  items:
+                    - image_id: 13
+                    - image_id: 14
+                  include_text: true
+      responses:
+        "200":
+          description: Batch OCR results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      batch_size:
+                        type: integer
+                      include_text:
+                        type: boolean
+                      snippet_len:
+                        type: integer
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            image_id:
+                              type: integer
+                            ok:
+                              type: boolean
+                            created:
+                              type: boolean
+                            has_text:
+                              type: boolean
+                            text_preview:
+                              type: string
+                              description: Present if include_text is true
+              examples:
+                mixed_result:
+                  value:
+                    status: ok
+                    data:
+                      batch_size: 32
+                      include_text: true
+                      snippet_len: 50
+                      results:
+                        - image_id: 12
+                          ok: false
+                          error: IMAGE_NOT_FOUND_OR_UNSUPPORTED
+                        - image_id: 13
+                          ok: true
+                          created: true
+                          has_text: true
+                          text_preview: "Hello OCRfrom Doctr"
+                        - image_id: 14
+                          ok: true
+                          created: false
+                          has_text: true
+                          text_preview: "Hello OCRfrom Doctr"
+components:
+  schemas:
+    SearchResult:
+      type: object
+      properties:
+        image_id:
+          type: integer
+        score:
+          type: number
+          format: float
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

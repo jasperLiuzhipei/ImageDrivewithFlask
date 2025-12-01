@@ -1,0 +1,11 @@
+# 核心 PyTorch 库 (将自动为 M4 芯片安装 GPU/mps 版本)
+torch
+torchvision
+
+# Doctr OCR 库 (并指定它使用 torch 后端)
+python-doctr[torch]
+
+# Pillow (PIL) 和 numpy 会作为 doctr[torch] 的依赖项自动安装
+# 但显式列出有助于保持环境一致性
+numpy
+Pillow

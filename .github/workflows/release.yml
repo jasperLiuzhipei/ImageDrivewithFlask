@@ -1,0 +1,37 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to release (e.g., v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare release body
+        id: prep
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          FILE="docs/RELEASE_NOTES_${TAG}.md"
+          if [ ! -f "$FILE" ]; then
+            echo "# $TAG" > "$FILE"
+            echo >> "$FILE"
+            echo "- Auto-generated release." >> "$FILE"
+          fi
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          name: ${{ inputs.tag_name }}
+          body_path: ${{ steps.prep.outputs.file }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

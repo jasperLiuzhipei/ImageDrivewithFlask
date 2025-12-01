@@ -1,0 +1,184 @@
+{
+  "info": {
+    "name": "WebImageDrive APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "0.2.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:5000" },
+    { "key": "token", "value": "" },
+    { "key": "image_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user_{{$randomInt}}\",\n  \"password\": \"pass1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user_{{$randomInt}}\",\n  \"password\": \"pass1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Get Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/health", "host": ["{{baseUrl}}"], "path": ["api","v1","health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "item": [
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/files/upload", "host": ["{{baseUrl}}"], "path": ["api","v1","files","upload"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Text Search",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/search/text", "host": ["{{baseUrl}}"], "path": ["api","v1","search","text"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"a cat sitting on a chair\",\n  \"top_k\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "Vector Search",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/search/vector", "host": ["{{baseUrl}}"], "path": ["api","v1","search","vector"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vector\": [0.0, 0.0, 0.0],\n  \"top_k\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "Similar By Image",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/search/image/{{image_id}}/similar?top_k=10", "host": ["{{baseUrl}}"], "path": ["api","v1","search","image","{{image_id}}","similar"], "query": [ {"key":"top_k","value":"10"} ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "OCR",
+      "item": [
+        {
+          "name": "Ingest Single",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/ingest/ocr", "host": ["{{baseUrl}}"], "path": ["api","v1","ingest","ocr"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_id\": {{image_id}},\n  \"include_text\": true,\n  \"snippet_len\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "Ingest Batch (items)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/ingest/ocr/batch", "host": ["{{baseUrl}}"], "path": ["api","v1","ingest","ocr","batch"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [ {\"image_id\": {{image_id}}} ],\n  \"include_text\": true,\n  \"snippet_len\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "Ingest Batch (image_ids)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/ingest/ocr/batch", "host": ["{{baseUrl}}"], "path": ["api","v1","ingest","ocr","batch"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_ids\": [ {{image_id}} ],\n  \"include_text\": true,\n  \"snippet_len\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "OCR Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/search/ocr", "host": ["{{baseUrl}}"], "path": ["api","v1","search","ocr"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"OCR\",\n  \"top_k\": 10\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

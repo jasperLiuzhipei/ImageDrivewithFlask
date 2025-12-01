@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.env
+.venv
+
+# IDEs
+.vscode/
+.idea/
+
+# Data outputs
+data/output/
+data/imagenet_base/*
+
+# Logs
+logs/
