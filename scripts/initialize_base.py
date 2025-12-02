@@ -43,7 +43,7 @@ def _process_images_in_batches(image_paths, owner_id, len_subset=None):
     success_count = 0
 
     for i in range(0, total_images, batch_size):
-        batch_paths = image_paths[i:i + batch_size]
+        batch_paths = image_paths[i:min(total_images, i + batch_size)]
         current_batch_num = (i // batch_size) + 1
         total_batches = (total_images + batch_size - 1) // batch_size
 
@@ -148,7 +148,7 @@ def _process_images_in_batches(image_paths, owner_id, len_subset=None):
             current_app.logger.error("Failed to commit batch %d: %s", current_batch_num, e)
             db.session.rollback()
         upload_ed = perf_counter()
-        current_app.logger.debug("\n**Time stats**\nCLIP: %.3fs\nOCR: %.3fs\nUpload: %.3fs", clip_ed-clip_st, ocr_ed-ocr_st, upload_ed-upload_st)
+        # current_app.logger.debug("\n**Time stats**\nCLIP: %.3fs\nOCR: %.3fs\nUpload: %.3fs", clip_ed-clip_st, ocr_ed-ocr_st, upload_ed-upload_st)
 
     current_app.logger.info(
         "Batch upload completed: %d/%d images successfully processed",

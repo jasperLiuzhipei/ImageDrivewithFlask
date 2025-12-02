@@ -6,71 +6,58 @@ Falls back to None on any error.
 """
 from __future__ import annotations
 
-import os
 from typing import Optional, List
-from importlib.util import spec_from_file_location, module_from_spec
+from flask import current_app
 
-_TM_MODULE = None  # teammate's ocr_pipeline module
+_MODEL = None
 
 
-def _load_teammate_module():  # pragma: no cover - runtime IO
-    global _TM_MODULE
-    if _TM_MODULE is not None:
-        return _TM_MODULE
+def _load_model():
+    global _MODEL
+    if _MODEL is not None:
+        return _MODEL
     try:
-        # project root = app/.. (two levels up from this file)
-        here = os.path.dirname(__file__)
-        root = os.path.dirname(os.path.dirname(here))
-        path = os.path.join(root, "others", "imagedrive--OCR-main", "ocr_pipeline.py")
-        if not os.path.exists(path):
-            _TM_MODULE = None
-            return None
-        spec = spec_from_file_location("teammate_ocr_pipeline", path)
-        if spec is None or spec.loader is None:
-            _TM_MODULE = None
-            return None
-        mod = module_from_spec(spec)
-        spec.loader.exec_module(mod)  # type: ignore[attr-defined]
-        _TM_MODULE = mod
-        return mod
-    except Exception:
-        _TM_MODULE = None
+        from rapidocr_onnxruntime import RapidOCR  # type: ignore
+    except Exception as e:
+        current_app.logger.error("Failed to import RapidOCR: %s", e)
         return None
+    try:
+        use_cuda = current_app.config.get("OCR_USE_CUDA", False)
+        batch_num = current_app.config.get("OCR_REC_BATCH_NUM", 6)
+        model = RapidOCR(
+                det_use_cuda=use_cuda,
+                cls_use_cuda=use_cuda,
+                rec_use_cuda=use_cuda,
+                rec_batch_num=batch_num,
+                intra_op_num_threads=2,
+                inter_op_num_threads=2
+            )
+    except Exception as e:
+        current_app.logger.error("Failed to create RapidOCR instance: %s", e)
+        return None
+    return model
 
 
 def extract_text(image_path: str) -> Optional[str]:  # pragma: no cover
-    mod = _load_teammate_module()
-    if mod is None:
+    model = _load_model()
+    if model is None:
         return None
     try:
-        # Prefer teammate's canonical name `process_image`, fallback to historical name
-        func = getattr(mod, "process_image", None)
-        if not callable(func):
-            func = getattr(mod, "extract_text_from_image_path", None)
-        if not callable(func):
+        result, _ = model(image_path)
+        if not result:
             return None
-        return func(image_path)
-    except Exception:
+        text_lines = [item[1] for item in result if item and len(item) >= 2]
+        return " ".join(text_lines)
+    except Exception as e:
+        current_app.logger.error(f"OCR Error: {e}")
         return None
 
 
 def extract_text_batch(image_paths: List[str], batch_size: int = 32) -> List[Optional[str]]:  # pragma: no cover
-    mod = _load_teammate_module()
-    if mod is None:
+    model = _load_model()
+    if model is None:
         return [None] * len(image_paths)
     try:
-        # Prefer teammate's canonical batch name
-        func = getattr(mod, "process_image_batch", None)
-        if callable(func):
-            try:
-                return func(image_paths, batch_size=batch_size)
-            except TypeError:
-                # If teammate didn't implement batch_size kw, try positional or no arg
-                try:
-                    return func(image_paths, batch_size)
-                except TypeError:
-                    return func(image_paths)
-        # fallback to per-image
         return [extract_text(p) for p in image_paths]
     except Exception:
         return [None] * len(image_paths)

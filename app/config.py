@@ -84,6 +84,8 @@ class Config:
     BASE_DATASET_PATH = os.environ.get("BASE_DATASET_PATH", "./data/tiny-imagenet-200/train")
     BASE_UPLOAD_BATCH_SIZE = int(os.environ.get("BASE_UPLOAD_BATCH_SIZE", "32"))
     LEN_SUBSET = int(os.environ.get("LEN_SUBSET", "1000"))
+    OCR_REC_BATCH_NUM = int(os.environ.get("OCR_REC_BATCH_NUM", "6"))
+    OCR_USE_GPU = os.environ.get("OCR_USE_GPU", "false").lower() == "true"
 
 
 class DevConfig(Config):
