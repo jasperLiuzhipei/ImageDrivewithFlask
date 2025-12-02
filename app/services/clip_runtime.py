@@ -153,6 +153,58 @@ def embed_image_path(path: str) -> Optional[List[float]]:
             return None
 
 
+def embed_image_paths_batch(paths: str, batch_size: int = 32) -> Optional[List[float]]:
+    """Batch embed multiple image files and return a float list. Returns None on failure.
+    The caller is responsible for normalization and persistence.
+    """
+    global _BACKEND
+    if _use_team_backend():
+        proc = _load_team_processor()
+        if proc is None:
+            return None
+        try:
+            vec = proc.embed_image(paths)
+            if vec is None:
+                return None
+            _BACKEND = "team-processor"
+            global _TEAM_DIM
+            if _TEAM_DIM is None:
+                try:
+                    _TEAM_DIM = int(len(vec))
+                except Exception:
+                    pass
+            return vec
+        except Exception as e:
+            try:
+                current_app.logger.exception("team embed_image failed: %s", e)
+            except Exception:
+                pass
+            return None
+    else:
+        model = _load_model()
+        if model is None:
+            return None
+        try:
+            from PIL import Image  # type: ignore
+        except Exception as e:
+            try:
+                current_app.logger.exception("st embed_image failed: %s", e)
+            except Exception:
+                pass
+            return None
+        try:
+            imgs = [Image.open(path).convert("RGB") for path in paths]
+            vec = model.encode(imgs, batch_size=batch_size, convert_to_numpy=True)
+            _BACKEND = "sentence-transformers"
+            return vec
+        except Exception as e:
+            try:
+                current_app.logger.exception("team embed_text failed: %s", e)
+            except Exception:
+                pass
+            return None
+
+
 def embed_text(text: str) -> Optional[List[float]]:
     global _BACKEND
     if _use_team_backend():

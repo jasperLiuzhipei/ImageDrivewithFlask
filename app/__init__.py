@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from flask import Flask, redirect
 from dotenv import load_dotenv
-from .config import get_config
 from .extensions import init_extensions
 from .utils.errors import register_error_handlers  # new
 from .blueprints.core import core_bp
@@ -15,6 +14,10 @@ from .blueprints.search_ocr import search_ocr_bp
 from .blueprints.analytics import analytics_bp
 from .blueprints.images import images_bp
 from .blueprints.logs import logs_bp
+
+# Load .env before import .config (defaults < .env < environment variables)
+load_dotenv(override=False)
+from .config import get_config
 
 BLUEPRINTS = [
     core_bp,
@@ -40,9 +43,6 @@ def create_app(config_name: str | None = None) -> Flask:
     2. Init extensions
     3. Register blueprints
     """
-    # Load .env first (defaults < .env < environment variables)
-    load_dotenv(override=False)
-
     if config_name is None:
         config_name = os.environ.get("FLASK_CONFIG", "dev")
     config_obj = get_config(config_name)

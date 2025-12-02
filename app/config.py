@@ -79,6 +79,12 @@ class Config:
     # FAISS index persistence (per-user) directory
     INDEX_DIR = os.environ.get("INDEX_DIR", os.path.join(os.getcwd(), "instance", "faiss"))
 
+    # Base dataset upload
+    ENABLE_INITIALIZATION = os.environ.get("ENABLE_INITIALIZATION", "true").lower() == "true"
+    BASE_DATASET_PATH = os.environ.get("BASE_DATASET_PATH", "./data/tiny-imagenet-200/train")
+    BASE_UPLOAD_BATCH_SIZE = int(os.environ.get("BASE_UPLOAD_BATCH_SIZE", "32"))
+    LEN_SUBSET = int(os.environ.get("LEN_SUBSET", "1000"))
+
 
 class DevConfig(Config):
     DEBUG = True
