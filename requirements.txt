@@ -20,6 +20,8 @@ faiss-cpu; platform_system != "Darwin"  # Prefer conda for macOS
 python-doctr==1.0.0
 opencv-python-headless>=4.8
 rapidfuzz>=3.6
+# onnxruntime-gpu>=1.18.0  # optional, for cuda
+rapidocr-onnxruntime>=1.4.4
 
 # Database drivers
 psycopg2-binary>=2.9
